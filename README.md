@@ -11,13 +11,15 @@ Or for a standalone installation, run the following command:
 
 `ghe-check-hotpatch <version>`
 
-EXAMPLES:
+### Examples
 
-   This will validate a hotpatch to 2.17.15
+   This will validate a full cluster/HA hotpatch to 2.17.15
      `$ ghe-check-cluster-hotpatch 2.17.15`
+
+   This will validate a standalone server hotpatch to 2.19.18
+     `$ ghe-check-hotpatch 2.19.18`
 
 # Notes
 
 - This is primarily focused on validation of the GitHub centric processes ("Unicorns") which handle all API activity and user request processing.
 - This is provided as-is, and should be used in combination with other sanity checks implemented for your deployment.
-- This currently expects the environment to be using TLS. If this isn't the case, it's highly recommended that you implement TLS.

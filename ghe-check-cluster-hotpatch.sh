@@ -46,9 +46,9 @@ sanity_check () {
 # attempting to run against feature release upgrades.
 
   GHES_HOSTNAME=$(grep github-hostname /data/user/common/github.conf | awk '{print $3}')
-  API_VERSION=$(curl -Lkis https://$GHES_HOSTNAME/api/v3/ | grep X-GitHub-Enterprise-Version | awk '{print $2}')
+  API_VERSION=$(curl -s http://localhost:1337/api/v3/meta | jq .installed_version | tr '"' ' ' | xargs)
 
-  if [[ ! "$PATCH_VERSION" == "$API_VERSION"* ]]
+  if [[ ! "$PATCH_VERSION" == "$API_VERSION" ]]
   then
     echo "ERROR: API is reporting a different version than expected from command."
     echo "Specified version:" $PATCH_VERSION
