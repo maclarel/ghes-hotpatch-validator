@@ -1,12 +1,12 @@
 #!/bin/bash
-#/ Usage: ghe-check-cluster-hotpatch <version>
+#/ Usage: ghe-cluster-check-hotpatch <version>
 #/
 #/ Reviews upgrade status of all nodes on the cluster to ensure successful hotpatch
 #/
 #/ EXAMPLES:
 #/
 #/    This will validate a hotpatch to 2.17.15
-#/      $ ghe-check-cluster-hotpatch 2.17.15
+#/      $ ghe-cluster-check-hotpatch 2.17.15
 #/
 set -e
 
