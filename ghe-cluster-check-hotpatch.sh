@@ -20,7 +20,7 @@ PATCH_VERSION=$1
 # Validate that a version has been provided
 if [ -z $1 ]
 then
-  echo "Please provide a version, e.g. ./ghe-check-cluster-hotpatch 2.17.15"
+  echo "Please provide a version, e.g. ghe-cluster-check-hotpatch 2.17.15"
   exit 1
 fi
 
