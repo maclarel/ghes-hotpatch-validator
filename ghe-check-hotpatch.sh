@@ -81,7 +81,7 @@ get_current_symlink () {
 
   echo "Checking that the /data/github/current symlink is updated:"
   echo
-  NEWEST_HASH=$(ls -r /data/github/ | grep -v current | tail -n1)
+  NEWEST_HASH=$(ls -t /data/github/ | grep -v current | head -n1)
   CURRENT_SYMLINK=$(ls -l /data/github/current | awk '{print $11}')
   if [[ "$CURRENT_SYMLINK" == *"$NEWEST_HASH" ]]
   then
@@ -100,7 +100,7 @@ check_running_hash () {
 # hash, and rarely being seen in the wild.
 
   echo "Checking that the Unicorn processes are running on the correct hash:"
-  NEWEST_HASH=$(ls -r /data/github/ | grep -v current | tail -n1 | cut -c 1-7)
+  NEWEST_HASH=$(ls -t /data/github/ | grep -v current | head -n1 | cut -c 1-7)
   for p in $(ps aux | grep ^git | grep -v slumlord | grep reqs | awk '{print $12}'); do
     if [[ "${p}" == *"$NEWEST_HASH"* ]]
     then
