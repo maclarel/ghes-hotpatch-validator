@@ -5,7 +5,7 @@ Bash script to validate hotpatching of GitHub Enterprise Server post-installatio
 
 Copy this script to any server in your GitHub Enterprise Server environment, and run it with the following command:
 
-`ghe-check-cluster-hotpatch <version>`
+`ghe-cluster-check-hotpatch <version>`
 
 Or for a standalone installation, run the following command:
 
@@ -14,7 +14,7 @@ Or for a standalone installation, run the following command:
 ### Examples
 
    This will validate a full cluster/HA hotpatch to 2.17.15
-     `$ ghe-check-cluster-hotpatch 2.17.15`
+     `$ ghe-cluster-check-hotpatch 2.17.15`
 
    This will validate a standalone server hotpatch to 2.19.18
      `$ ghe-check-hotpatch 2.19.18`

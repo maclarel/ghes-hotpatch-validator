@@ -29,7 +29,7 @@ sanity_check () {
 
   if [ -f /data/user/common/cluster.conf ]
   then
-    echo "ERROR: This appears to be a cluster/HA instance. Run ghe-check-cluster-hotpatch instead!"
+    echo "ERROR: This appears to be a cluster/HA instance. Run ghe-cluster-check-hotpatch instead!"
     exit 1
   fi
 
