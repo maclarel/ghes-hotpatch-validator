@@ -20,11 +20,19 @@ PATCH_VERSION=$1
 # Validate that a version has been provided
 if [ -z $1 ]
 then
-  echo "Please provide a version, e.g. ./cluster_upgrade_checker.sh 2.17.15"
+  echo "Please provide a version, e.g. ./ghe-check-cluster-hotpatch 2.17.15"
   exit 1
 fi
 
 sanity_check () {
+# Confirm that this is an HA or Cluster setup.
+
+  if [ ! -f /data/user/common/cluster.conf ]
+  then
+    echo "ERROR: This appears to be a standalone instance. Run ghe-check-hotpatch instead!"
+    exit 1
+  fi
+
 # Verify that a hotpatch has at least been run, and that this isn't running
 # against a feature release upgrade.
 
@@ -35,7 +43,8 @@ sanity_check () {
   fi
 
 # Verify that the same major version is reported to help rule out typos or
-# attempting to run against feature release upgrades
+# attempting to run against feature release upgrades.
+# Note - this does not work if public mode is enabled as the API response differs.
 
   GHES_HOSTNAME=$(grep github-hostname /data/user/common/github.conf | awk '{print $3}')
   API_VERSION=$(curl -ks https://$GHES_HOSTNAME/api/v3 | jq .documentation_url | awk -F "/" '{print $5}')
@@ -50,12 +59,12 @@ sanity_check () {
 }
 
 get_hosts () {
-# Create variable with all hosts in the cluster (from cluster.conf).
+# Create variable with all hosts in the cluster (from ghe-cluster-nodes).
 # This is to facilitate SSH operations, as ghe-cluster-each will
 # return all output in a block, rather than letting us go line by line.
 # This really just simplifies text parsing.
 
-  export ALL_HOSTS=$(grep "hostname =" /data/user/common/cluster.conf | awk '{print $3}')
+  ALL_HOSTS=$(ghe-cluster-nodes)
 }
 
 check_log () {
