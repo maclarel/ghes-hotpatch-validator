@@ -7,6 +7,10 @@ Copy this script to any server in your GitHub Enterprise Server environment, and
 
 `ghe-check-cluster-hotpatch <version>`
 
+Or for a standalone installation, run the following command:
+
+`ghe-check-hotpatch <version>`
+
 EXAMPLES:
 
    This will validate a hotpatch to 2.17.15
@@ -16,3 +20,5 @@ EXAMPLES:
 
 - This is primarily focused on validation of the GitHub centric processes ("Unicorns") which handle all API activity and user request processing.
 - This is provided as-is, and should be used in combination with other sanity checks implemented for your deployment.
+- This currently expects the environment to be using TLS. If this isn't the case, it's highly recommended that you implement TLS.
+- If Public Mode is enabled, certain validations may not run (i.e. major version comparison) due to differing API responses.
