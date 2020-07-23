@@ -16,3 +16,4 @@ EXAMPLES:
 
 - This is primarily focused on validation of the GitHub centric processes ("Unicorns") which handle all API activity and user request processing.
 - This is provided as-is, and should be used in combination with other sanity checks implemented for your deployment.
+- This currently expects the environment to be using TLS. If this isn't the case, it's highly recommended that you implement TLS.
