@@ -44,14 +44,13 @@ sanity_check () {
 
 # Verify that the same major version is reported to help rule out typos or
 # attempting to run against feature release upgrades.
-# Note - this does not work if public mode is enabled as the API response differs.
 
   GHES_HOSTNAME=$(grep github-hostname /data/user/common/github.conf | awk '{print $3}')
-  API_VERSION=$(curl -ks https://$GHES_HOSTNAME/api/v3 | jq .documentation_url | awk -F "/" '{print $5}')
+  API_VERSION=$(curl -Lkis https://$GHES_HOSTNAME/api/v3/ | grep X-GitHub-Enterprise-Version | awk '{print $2}')
 
   if [[ ! "$PATCH_VERSION" == "$API_VERSION"* ]]
   then
-    echo "ERROR: API is reporting a different major version than specified in command."
+    echo "ERROR: API is reporting a different version than expected from command."
     echo "Specified version:" $PATCH_VERSION
     echo "API reporting:" $API_VERSION
     exit 1
