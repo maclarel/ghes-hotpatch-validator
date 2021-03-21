@@ -20,7 +20,7 @@ PATCH_VERSION=$1
 FAILURE_STATUS=
 
 # Validate that a version has been provided
-if [ -z $1 ]
+if [ -z "$1" ]
 then
   echo "Please provide a version, e.g. ghe-check-hotpatch.sh 2.17.15"
   exit 1
@@ -44,16 +44,15 @@ sanity_check () {
 # Verify that a hotpatch has at least been run, and that this isn't running
 # against a feature release upgrade.
 
-  if [ ! -f /data/user/patch/$PATCH_VERSION/hotpatch.log ]
+  if [ ! -f /data/user/patch/"$PATCH_VERSION"/hotpatch.log ]
   then
-    echo "ERROR: Hotpatch log not found for" $PATCH_VERSION". Are you sure you specified the right version?"
+    echo "ERROR: Hotpatch log not found for $PATCH_VERSION. Are you sure you specified the right version?"
     exit 1
   fi
 
 # Verify that the same major version is reported to help rule out typos or
 # attempting to run against feature release upgrades.
 
-  GHES_HOSTNAME=$(grep github-hostname /data/user/common/github.conf | awk '{print $3}')
   API_VERSION=$(curl -s http://localhost:1337/api/v3/meta | jq .installed_version | tr '"' ' ' | xargs)
 
   echo "Checking if API version matches expected version:"
@@ -62,8 +61,8 @@ sanity_check () {
     echo "API version matches expected version."
   else
     echo "ERROR: API is reporting a different major version than specified in command."
-    echo "Specified version:" $PATCH_VERSION
-    echo "API reporting:" $API_VERSION
+    echo "Specified version: $PATCH_VERSION"
+    echo "API reporting: $API_VERSION"
     export FAILURE_STATUS=true
   fi
   echo
@@ -74,10 +73,10 @@ check_log () {
 # completed or not.
 
   echo "Checking upgrade status"
-  LAST_LOG_LINE=$(tail -n1 /data/user/patch/$PATCH_VERSION/hotpatch.log)
+  LAST_LOG_LINE=$(tail -n1 /data/user/patch/"$PATCH_VERSION"/hotpatch.log)
   if [[ "$LAST_LOG_LINE" == *"is now patched"* ]]
   then
-    echo "Upgrade completed successfully. Last line:" $LAST_LOG_LINE
+    echo "Upgrade completed successfully. Last line: $LAST_LOG_LINE"
   else
     echo "ERROR: Upgrade did not fully complete!"
     export FAILURE_STATUS=true
@@ -96,10 +95,10 @@ verify_running_image_tags () {
 
     # Verify that we're only running *one* unique hash per service
     # to avoid duplicate containers
-    NUM_RUNNING_HASHES_FOR_SERVICE=$(echo $RUNNING_TAG | wc -w)
+    NUM_RUNNING_HASHES_FOR_SERVICE=$(echo "$RUNNING_TAG" | wc -w)
     if [ "$NUM_RUNNING_HASHES_FOR_SERVICE" -gt 1 ]
     then 
-      echo "ERROR: More than 1 running hash for service $s! Expected 1, got $NUM_RUNNING_HASHES_FOR_SERVICE."
+      echo "ERROR: More than 1 running hash for service $s! Got: $NUM_RUNNING_HASHES_FOR_SERVICE Expected: 1."
       export FAILURE_STATUS=true 
     fi
 
@@ -108,7 +107,7 @@ verify_running_image_tags () {
     then 
       echo "$s is running on the expected hash."
     else
-      echo "$s is running on the wrong hash! Expected $EXPECTED_TAG, got $RUNNING_TAG!"
+      echo "$s is running on the wrong hash! Got: $EXPECTED_TAG Expected: $RUNNING_TAG!"
       export FAILURE_STATUS=true
     fi
   done
@@ -125,7 +124,7 @@ get_current_symlink () {
   CURRENT_SYMLINK=$(ls -l /data/github/current | awk '{print $11}')
   if [[ "$CURRENT_SYMLINK" == *"$NEWEST_HASH" ]]
   then
-    echo "This server has the correct symlink. Current symlink:" $CURRENT_SYMLINK "Expected hash:" $NEWEST_HASH
+    echo "This server has the correct symlink. Current symlink: $CURRENT_SYMLINK Expected hash: $NEWEST_HASH"
   else
     echo "ERROR: The symlink is not pointing to the newest hash!"
     export FAILURE_STATUS=true
@@ -144,9 +143,9 @@ check_running_hash () {
   for p in $(ps aux | grep ^git | grep -v slumlord | grep reqs | awk '{print $12}'); do
     if [[ "${p}" == *"$NEWEST_HASH"* ]]
     then
-      echo "Unicorn processes are on the latest hash. Showing:" ${p} "Expected hash:" $NEWEST_HASH
+      echo "Unicorn processes are on the latest hash. Showing: ${p} Expected hash: $NEWEST_HASH"
     else
-      echo "ERROR: Unicorn processes are NOT on the latest hash! Showing:" ${p} "Expected hash:" $NEWEST_HASH
+      echo "ERROR: Unicorn processes are NOT on the latest hash! Showing: ${p} Expected hash: $NEWEST_HASH"
       export FAILURE_STATUS=true
     fi
   done
@@ -163,7 +162,7 @@ exit_status () {
     echo "!!!"
     exit 1
   else
-    echo "Upgrade to" $PATCH_VERSION "appears to have completed successfully!"
+    echo "Upgrade to $PATCH_VERSION appears to have completed successfully!"
     exit 0
   fi
 }
