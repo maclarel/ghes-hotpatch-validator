@@ -1,9 +1,9 @@
 # ghes-hotpatch-validator
-Bash script to validate hotpatching of GitHub Enterprise Server post-installation. This will not work for full feature release upgrades (e.g. 2.19.14 to 2.20.10) as it first confirms the status of the upgrade based on the `hotpatch.log` file which should be present on all nodes.
+Bash scripts to validate hotpatching of GitHub Enterprise Server post-installation. This will not work for full feature release upgrades (e.g. 2.19.14 to 2.20.10) as it first confirms the status of the upgrade based on the `hotpatch.log` file which should be present on all nodes.
 
 # Usage
 
-Copy this script to any server in your GitHub Enterprise Server environment, and run it with the following command:
+Copy these scripts to any server in your GitHub Enterprise Server environment, and run the appropriate script, e.g.:
 
 `ghe-cluster-check-hotpatch <version>`
 
