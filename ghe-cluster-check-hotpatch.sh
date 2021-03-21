@@ -15,13 +15,21 @@ if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
   exit 2
 fi
 
+# Grab arg/init failure status
 PATCH_VERSION=$1
+FAILURE_STATUS
 
 # Validate that a version has been provided
-if [ -z $1 ]
+if [ -z "$1" ]
 then
   echo "Please provide a version, e.g. ghe-cluster-check-hotpatch 2.17.15"
   exit 1
+fi
+
+# Set FEATURE_RELEASE variable to indicate that we're working with GHES 3.x
+if [[ "$PATCH_VERSION" =~ 3.[0-9]+.[0-9]+ ]]
+then
+  FEATURE_RELEASE=3
 fi
 
 sanity_check () {
@@ -36,23 +44,22 @@ sanity_check () {
 # Verify that a hotpatch has at least been run, and that this isn't running
 # against a feature release upgrade.
 
-  if [ ! -f /data/user/patch/$PATCH_VERSION/hotpatch.log ]
+  if [ ! -f /data/user/patch/"$PATCH_VERSION"/hotpatch.log ]
   then
-    echo "ERROR: Hotpatch log not found for" $PATCH_VERSION". Are you sure you specified the right version?"
+    echo "ERROR: Hotpatch log not found for $PATCH_VERSION. Are you sure you specified the right version?"
     exit 1
   fi
 
 # Verify that the same major version is reported to help rule out typos or
 # attempting to run against feature release upgrades.
 
-  GHES_HOSTNAME=$(grep github-hostname /data/user/common/github.conf | awk '{print $3}')
   API_VERSION=$(curl -s http://localhost:1337/api/v3/meta | jq .installed_version | tr '"' ' ' | xargs)
 
   if [[ ! "$PATCH_VERSION" == "$API_VERSION" ]]
   then
     echo "ERROR: API is reporting a different version than expected from command."
-    echo "Specified version:" $PATCH_VERSION
-    echo "API reporting:" $API_VERSION
+    echo "Specified version: $PATCH_VERSION"
+    echo "API reporting: $API_VERSION"
     exit 1
   fi
 }
@@ -73,16 +80,48 @@ check_log () {
   echo "Checking upgrade status across all nodes:"
   echo
   for h in $ALL_HOSTS; do
-    LAST_LOG_LINE=$(ssh ${h} tail -n1 /data/user/patch/$PATCH_VERSION/hotpatch.log)
+    LAST_LOG_LINE=$(ssh "${h}" tail -n1 /data/user/patch/"$PATCH_VERSION"/hotpatch.log)
     if [[ "$LAST_LOG_LINE" == *"is now patched"* ]]
     then
-      echo ${h} "upgrade completed successfully. Last line:" $LAST_LOG_LINE
+      echo "${h}" "upgrade completed successfully. Last line: $LAST_LOG_LINE"
     else
-      echo "ERROR: Upgrade did not fully complete on" ${h}!
+      echo "ERROR: Upgrade did not fully complete on ${h}!"
       export FAILURE_STATUS=true
     fi
   done
   echo
+}
+
+verify_running_image_tags () {
+# Get the running, and expected, hashes for all containerized service
+# and verify if they match.
+for h in $ALL_HOSTS; do  
+  echo "Checking that all containers on ${h} are running on their correct versions:"
+  for s in $(ssh "${h}" "docker ps -q | xargs docker inspect --format='{{.Config.Image}}'" | awk -F ':' '{print $1}' | sort -u); do
+    RUNNING_TAG=$(ssh "${h}" docker ps | grep "$s" | awk '{print $2}' | cut -d':' -f2 | sort -u)
+    EXPECTED_TAG=$(ssh "${h}" sudo cat /data/user/docker/image/overlay2/repositories.json | jq .Repositories | grep "$s:" | head -n1 | awk -F'\"' '{print $2}' | cut -d':' -f2)
+
+    # Verify that we're only running *one* unique hash per service
+    # to avoid duplicate containers
+    NUM_RUNNING_HASHES_FOR_SERVICE=$(echo "$RUNNING_TAG" | wc -w)
+    if [ "$NUM_RUNNING_HASHES_FOR_SERVICE" -gt 1 ]
+    then 
+      echo "ERROR: More than 1 running hash for service $s! Got: $NUM_RUNNING_HASHES_FOR_SERVICE Expected: 1."
+      export FAILURE_STATUS=true 
+    fi
+
+    # Verify that we're seeing the correct hash running
+    if [ "$RUNNING_TAG" == "$EXPECTED_TAG" ]
+    then 
+      echo "$s is running on the expected hash."
+    else
+      echo "$s is running on the wrong hash! Got: $EXPECTED_TAG Expected: $RUNNING_TAG!"
+      export FAILURE_STATUS=true
+    fi
+  done
+  echo
+done
+echo
 }
 
 get_current_symlink () {
@@ -92,13 +131,13 @@ get_current_symlink () {
   echo "Checking that the /data/github/current symlink is updated:"
   echo
   for h in $ALL_HOSTS; do
-    NEWEST_HASH=$(ssh ${h} 'ls -t /data/github/ | grep -v current | head -n1')
-    CURRENT_SYMLINK=$(ssh ${h} ls -l /data/github/current | awk '{print $11}')
+    NEWEST_HASH=$(ssh "${h}" 'ls -t /data/github/ | grep -v current | head -n1')
+    CURRENT_SYMLINK=$(ssh "${h}" ls -l /data/github/current | awk '{print $11}')
     if [[ "$CURRENT_SYMLINK" == *"$NEWEST_HASH" ]]
     then
-      echo ${h} "has the correct symlink. Current symlink:" $CURRENT_SYMLINK "Expected hash:" $NEWEST_HASH
+      echo "${h}" "has the correct symlink. Got: $CURRENT_SYMLINK Expected: $NEWEST_HASH"
     else
-      echo "ERROR: The symlink on" ${h} "is not pointing to the newest hash!"
+      echo "ERROR: The symlink on ${h} is not pointing to the newest hash!"
       export FAILURE_STATUS=true
     fi
   done
@@ -113,13 +152,13 @@ check_running_hash () {
 
   echo "Checking that the Unicorn processes are running on the correct hash:"
   for h in $ALL_HOSTS; do
-    NEWEST_HASH=$(ssh ${h} 'ls -t /data/github/ | grep -v current | head -n1 | cut -c 1-7')
-    for p in $(ssh ${h} ps aux | grep ^git | grep -v slumlord | grep reqs | awk '{print $12}'); do
+    NEWEST_HASH=$(ssh "${h}" 'ls -t /data/github/ | grep -v current | head -n1 | cut -c 1-7')
+    for p in $(ssh "${h}" ps aux | grep ^git | grep -v slumlord | grep reqs | awk '{print $12}'); do
       if [[ "${p}" == *"$NEWEST_HASH"* ]]
       then
-        echo "Unicorn processes on ${h} are on the latest hash. Showing:" ${p} "Expected hash:" $NEWEST_HASH
+        echo "Unicorn processes on ${h} are on the latest hash. Got: ${p} Expected: $NEWEST_HASH"
       else
-        echo "ERROR: Unicorn processes on" ${h} "are NOT on the latest hash! Showing:" ${p} "Expected hash:" $NEWEST_HASH
+        echo "ERROR: Unicorn processes on ${h} are NOT on the latest hash! Got: ${p} Expected : $NEWEST_HASH"
         export FAILURE_STATUS=true
       fi
     done
@@ -137,7 +176,7 @@ exit_status () {
     echo "!!!"
     exit 1
   else
-    echo "Upgrade to" $PATCH_VERSION "appears to have completed successfully!"
+    echo "Upgrade to $PATCH_VERSION appears to have completed successfully!"
     exit 0
   fi
 }
@@ -146,8 +185,13 @@ main () {
   sanity_check
   get_hosts
   check_log
-  get_current_symlink
-  check_running_hash
+  if [ "$FEATURE_RELEASE" -eq 3 ];
+  then
+    verify_running_image_tags
+  else
+    get_current_symlink
+    check_running_hash
+  fi
   exit_status
 }
 
