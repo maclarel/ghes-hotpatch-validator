@@ -21,5 +21,6 @@ Or for a standalone installation, run the following command:
 
 # Notes
 
-- This is primarily focused on validation of the GitHub centric processes ("Unicorns") which handle all API activity and user request processing.
+- For GitHub Enterprise Server 2.x this is primarily focused on validation of the GitHub centric processes ("Unicorns") which handle all API activity and user request processing.
+  - When run on GitHub Enterprise Server 3.x it will verify all running containerized services.
 - This is provided as-is, and should be used in combination with other sanity checks implemented for your deployment.
