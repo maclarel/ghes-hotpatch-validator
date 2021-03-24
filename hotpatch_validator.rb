@@ -1,6 +1,6 @@
 # Grab and validate command line arg for version
 def validate_args(arg)
-    puts "Please provide a version, e.g. ghe-check-hotpatch.sh 2.17.15" if ARGV.length < 1 || ARGV.length > 1 || arg < 3
+    ( puts "Please provide a version, e.g. ghe-check-hotpatch.sh 2.17.15"; exit ) if ARGV.length < 1 || ARGV.length > 1 || arg < 3
     @PATCH_VERSION = ARGV[0]
 end
 
