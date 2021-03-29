@@ -30,6 +30,8 @@ fi
 if [[ "$PATCH_VERSION" =~ 3.[0-9]+.[0-9]+ ]]
 then
   FEATURE_RELEASE=3
+else
+  FEATURE_RELEASE=2
 fi
 
 sanity_check () {
