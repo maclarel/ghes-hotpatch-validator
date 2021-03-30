@@ -16,11 +16,15 @@ if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
 fi
 
 # Grab arg/init failure status
-PATCH_VERSION=$1
+PATCH_VERSION="$1"
 FAILURE_STATUS=
 
+# Trim PATCH_VERSION
+PATCH_VERSION="$(shopt -s extglob; echo "${PATCH_VERSION%%+([[:space:]])}")"
+PATCH_VERSION="$(shopt -s extglob; echo "${PATCH_VERSION##+([[:space:]])}")"
+
 # Validate that a version has been provided
-if [ -z "$1" ]
+if [ -z "${PATCH_VERSION}" ]
 then
   echo "Please provide a version, e.g. ghe-check-hotpatch.sh 2.17.15"
   exit 1
@@ -55,7 +59,11 @@ sanity_check () {
 # Verify that the same major version is reported to help rule out typos or
 # attempting to run against feature release upgrades.
 
-  API_VERSION=$(curl -s http://localhost:1337/api/v3/meta | jq .installed_version | tr '"' ' ' | xargs)
+  API_VERSION="$(curl -s http://localhost:1337/api/v3/meta | jq -r .installed_version)" || {
+    echo "ERROR: Failed to retrieve version via API"
+    export FAILURE_STATUS=true
+    return
+  }
 
   echo "Checking if API version matches expected version:"
   if [[ "$PATCH_VERSION" == "$API_VERSION"* ]]
@@ -89,11 +97,24 @@ check_log () {
 verify_running_image_tags () {
 # Get the running, and expected, hashes for all containerized service
 # and verify if they match.
+
+  # Cache JSON so we don't call sudo so many times
+  expected_json="$(sudo cat /data/user/docker/image/overlay2/repositories.json)"
   
   echo "Checking that all containers are running on their correct versions:"
-  for s in $(docker ps -q | xargs docker inspect --format='{{.Config.Image}}' | awk -F ':' '{print $1}' | sort -u); do
-    RUNNING_TAG=$(docker ps | grep "$s" | awk '{print $2}' | cut -d':' -f2 | sort -u)
-    EXPECTED_TAG=$(sudo cat /data/user/docker/image/overlay2/repositories.json | jq .Repositories | grep "$s:" | head -n1 | awk -F'\"' '{print $2}' | cut -d':' -f2)
+  while read id image; do
+    # $image format is <image>:<tag>
+    s="${image%%:*}"
+    RUNNING_TAG="${image#*:}"
+
+    # $image format is <image>:<tag>
+    image="$(jq -r '.Repositories."'"${s}"'" | keys[0]' <<<"${expected_json}")"
+    s2="${image%%:*}"
+    EXPECTED_TAG="${image#*:}"
+    if [ "${s2}" != "${s}" ]
+    then
+      echo "WARNING: Unexpected image name for '${s}' in expected tag list: ${s2}"
+    fi
 
     # Verify that we're only running *one* unique hash per service
     # to avoid duplicate containers
@@ -112,7 +133,7 @@ verify_running_image_tags () {
       echo "$s is running on the wrong hash! Got: $EXPECTED_TAG Expected: $RUNNING_TAG!"
       export FAILURE_STATUS=true
     fi
-  done
+  done < <(docker ps --format='{{.ID}} {{.Image}}')
   echo
 }
 
