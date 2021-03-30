@@ -109,7 +109,7 @@ verify_running_image_tags () {
     then 
       echo "$s is running on the expected hash."
     else
-      echo "$s is running on the wrong hash! Got: $EXPECTED_TAG Expected: $RUNNING_TAG!"
+      echo "$s is running on the wrong hash! Got: $RUNNING_TAG Expected: $EXPECTED_TAG!"
       export FAILURE_STATUS=true
     fi
   done
