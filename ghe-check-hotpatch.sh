@@ -58,7 +58,7 @@ sanity_check () {
   API_VERSION=$(curl -s http://localhost:1337/api/v3/meta | jq .installed_version | tr '"' ' ' | xargs)
 
   echo "Checking if API version matches expected version:"
-  if [[ "$PATCH_VERSION" == "$API_VERSION"* ]]
+  if [[ "$PATCH_VERSION" == "$API_VERSION" ]]
   then
     echo "API version matches expected version."
   else
