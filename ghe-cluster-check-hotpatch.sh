@@ -17,7 +17,7 @@ fi
 
 # Grab arg/init failure status
 PATCH_VERSION=$1
-FAILURE_STATUS
+FAILURE_STATUS=
 
 # Validate that a version has been provided
 if [ -z "$1" ]
