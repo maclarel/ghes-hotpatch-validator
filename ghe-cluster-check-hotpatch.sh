@@ -16,11 +16,15 @@ if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
 fi
 
 # Grab arg/init failure status
-PATCH_VERSION=$1
+PATCH_VERSION="$1"
 FAILURE_STATUS=
 
+# Trim PATCH_VERSION
+PATCH_VERSION="$(shopt -s extglob; echo "${PATCH_VERSION%%+([[:space:]])}")"
+PATCH_VERSION="$(shopt -s extglob; echo "${PATCH_VERSION##+([[:space:]])}")"
+
 # Validate that a version has been provided
-if [ -z "$1" ]
+if [ -z "${PATCH_VERSION}" ]
 then
   echo "Please provide a version, e.g. ghe-cluster-check-hotpatch 2.17.15"
   exit 1
@@ -55,7 +59,12 @@ sanity_check () {
 # Verify that the same major version is reported to help rule out typos or
 # attempting to run against feature release upgrades.
 
-  API_VERSION=$(curl -s http://localhost:1337/api/v3/meta | jq .installed_version | tr '"' ' ' | xargs)
+
+  API_VERSION="$(curl -s http://localhost:1337/api/v3/meta | jq -r .installed_version)" || {
+    echo "ERROR: Failed to retrieve version via API"
+    export FAILURE_STATUS=true
+    return
+  }
 
   if [[ ! "$PATCH_VERSION" == "$API_VERSION" ]]
   then
@@ -94,7 +103,7 @@ check_log () {
   echo
 }
 
-verify_running_image_tags () {
+verify_running_image_tags_old () {
 # Get the running, and expected, hashes for all containerized service
 # and verify if they match.
 for h in $ALL_HOSTS; do  
@@ -117,13 +126,56 @@ for h in $ALL_HOSTS; do
     then 
       echo "$s is running on the expected hash."
     else
-      echo "$s is running on the wrong hash! Got: $EXPECTED_TAG Expected: $RUNNING_TAG!"
+      echo "$s is running on the wrong hash! Got: $RUNNING_TAG Expected: $EXPECTED_TAG!"
       export FAILURE_STATUS=true
     fi
   done
   echo
 done
 echo
+}
+
+verify_running_image_tags () {
+# Get the running, and expected, hashes for all containerized service
+# and verify if they match.
+  for h in $ALL_HOSTS; do
+    echo "Checking that all containers on ${h} are running on their correct versions:"
+    expected_json="$(ssh "${h}" sudo cat /data/user/docker/image/overlay2/repositories.json)"
+
+    while read id image; do
+      # $image format is <image>:<tag>
+      s="${image%%:*}"
+      RUNNING_TAG="${image#*:}"
+
+      # $image format is <image>:<tag>
+      image="$(jq -r '.Repositories."'"${s}"'" | keys[0]' <<<"${expected_json}")"
+      s2="${image%%:*}"
+      EXPECTED_TAG="${image#*:}"
+      if [ "${s2}" != "${s}" ]
+      then
+        echo "WARNING: Unexpected image name for '${s}' in expected tag list: ${s2}"
+      fi
+
+      # Verify that we're only running *one* unique hash per service
+      # to avoid duplicate containers
+      NUM_RUNNING_HASHES_FOR_SERVICE=$(echo "$RUNNING_TAG" | wc -w)
+      if [ "$NUM_RUNNING_HASHES_FOR_SERVICE" -gt 1 ]
+      then 
+        echo "ERROR: More than 1 running hash for service $s! Got: $NUM_RUNNING_HASHES_FOR_SERVICE Expected: 1."
+        export FAILURE_STATUS=true 
+      fi
+
+      # Verify that we're seeing the correct hash running
+      if [ "$RUNNING_TAG" == "$EXPECTED_TAG" ]
+      then 
+        echo "$s is running on the expected hash."
+      else
+        echo "$s is running on the wrong hash! Got: $RUNNING_TAG Expected: $EXPECTED_TAG!"
+        export FAILURE_STATUS=true
+      fi
+    done < <(ssh "${h}" "docker ps --format='{{.ID}} {{.Image}}'")
+  echo
+  done
 }
 
 get_current_symlink () {
