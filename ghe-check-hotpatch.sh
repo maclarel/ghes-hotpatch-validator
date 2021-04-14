@@ -30,12 +30,12 @@ then
   exit 1
 fi
 
-# Set FEATURE_RELEASE variable to indicate that we're working with GHES 3.x
+# Set MAJOR_RELEASE variable to indicate that we're working with GHES 3.x
 if [[ "$PATCH_VERSION" =~ 3.[0-9]+.[0-9]+ ]]
 then
-  FEATURE_RELEASE=3
+  MAJOR_RELEASE=3
 else
-  FEATURE_RELEASE=2
+  MAJOR_RELEASE=2
 fi
 
 sanity_check () {
@@ -193,7 +193,7 @@ exit_status () {
 main () {
   sanity_check
   check_log
-  if [ "$FEATURE_RELEASE" -eq 3 ];
+  if [ "$MAJOR_RELEASE" -eq 3 ];
   then
     verify_running_image_tags
   else
